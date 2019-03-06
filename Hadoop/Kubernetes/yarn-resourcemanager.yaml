@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: yarn-resourcemanager-service
+    labels:
+        app: yarn-resourcemanager
+spec:
+    ports:
+    - port: 8088
+      name: web
+    - port: 8033
+      name: admin
+    - port: 8032
+      name: general
+    - port: 8031
+      name: tracker
+    - port: 8030
+      name: scheduler
+    clusterIP: None
+    selector:
+        app: yarn-resourcemanager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: yarn-resourcemanager
+  name: yarn-resourcemanager-service-extern
+spec:
+  type: NodePort
+  ports:
+  - port: 8088
+  selector:
+    app: yarn-resourcemanager
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: yarn-resourcemanager
+    labels:
+        app: yarn-resourcemanager
+spec:
+    serviceName: yarn-resourcemanager-service
+    replicas: 1
+    selector:
+        matchLabels:
+            app: yarn-resourcemanager
+    template:
+        metadata:
+            labels:
+                app: yarn-resourcemanager
+        spec:
+            containers:
+            - name: yarn-resourcemanager
+              image: fronepi/yarn-resourcemanager
+              imagePullPolicy: IfNotPresent
+              env:
+              - name: CORE_CONF_fs_defaultFS
+                value: "hdfs://hdfs-namenode-0.hdfs-namenode-service.default.svc.cluster.local:8020"
+              - name: YARN_CONF_yarn_nodemanager_aux___services
+                value: "mapreduce_shuffle"
+              - name: MAPRED_CONF_mapreduce_jobhistory_address
+                value: "historyserver-0.historyserver-service.default.svc.cluster.local:10020"
+              ports:
+              - name: web
+                containerPort: 8088
+              - name: admin
+                containerPort: 8033
+              - name: general
+                containerPort: 8032
+              - name: tracker
+                containerPort: 8031
+              - name: scheduler
+                containerPort: 8030

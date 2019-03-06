@@ -1,0 +1,7 @@
+minikube start --cpus 4 --memory 6144
+
+kubectl create -f cassandra-service.yaml
+
+kubectl create -f cassandra-service-extern.yaml
+
+kubectl create -f cassandra-statefulset.yaml

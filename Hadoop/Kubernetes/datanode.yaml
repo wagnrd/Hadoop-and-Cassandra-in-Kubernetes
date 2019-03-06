@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: datanode-service
+    labels:
+        app: datanode
+spec:
+    ports:
+    - port: 50075
+      name: hdfs-web
+    - port: 50010
+      name: dtfs
+    - port: 50020
+      name: mtd
+    - port: 8042
+      name: yarn-web
+    - port: 8041
+      name: general
+    - port: 8040
+      name: localizer
+    clusterIP: None
+    selector:
+        app: datanode
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: datanode
+  name: datanode-service-extern
+spec:
+  type: NodePort
+  ports:
+  - port: 50075
+    name: hdfs-web
+  - port: 8042
+    name: yarn-web
+  selector:
+    app: datanode
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: datanode
+    labels:
+        app: datanode
+spec:
+    serviceName: datanode-service
+    replicas: 4
+    selector:
+        matchLabels:
+            app: datanode
+    template:
+        metadata:
+            labels:
+                app: datanode
+        spec:
+            containers:
+            - name: hdfs-datanode
+              image: fronepi/hdfs-datanode
+              imagePullPolicy: Always
+              env:
+              - name: CORE_CONF_fs_defaultFS
+                value: "hdfs://hdfs-namenode-0.hdfs-namenode-service.default.svc.cluster.local:8020"
+              - name: YARN_CONF_yarn_nodemanager_aux___services
+                value: "mapreduce_shuffle"
+              ports:
+              - name: hdfs-web
+                containerPort: 50075
+              - name: dtsf
+                containerPort: 50010
+              - name: mtd
+                containerPort: 50020
+            - name: yarn-nodemanager
+              image: fronepi/yarn-nodemanager
+              imagePullPolicy: Always
+              env:
+              - name: CORE_CONF_fs_defaultFS
+                value: "hdfs://hdfs-namenode-0.hdfs-namenode-service.default.svc.cluster.local:8020"
+              - name: YARN_CONF_yarn_resourcemanager_hostname
+                value: "yarn-resourcemanager-0.yarn-resourcemanager-service.default.svc.cluster.local"
+              - name: YARN_CONF_yarn_nodemanager_aux___services
+                value: "mapreduce_shuffle"
+              - name: MAPRED_CONF_mapreduce_jobhistory_address
+                value: "historyserver-0.historyserver-service.default.svc.cluster.local:10020"
+              ports:
+              - name: yarn-web
+                containerPort: 8042
+              - name: general
+                containerPort: 8041
+              - name: localizer
+                containerPort: 8040
+
